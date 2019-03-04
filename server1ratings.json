@@ -1,0 +1,16 @@
+[
+	{
+		"ratingID":"joespiderman",
+		"user":"joe",
+		"rating":4,
+		"movie":"spiderman"
+	},
+	{
+		"ratingID":"lukespiderman",
+		"user":"luke",
+		"rating":4,
+		"movie":"spiderman"
+	}
+]
+		
+		
