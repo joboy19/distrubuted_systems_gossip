@@ -4,7 +4,7 @@ import queue
 import threading
 import time
 import random
-serverNum = 1
+serverNum = 0
 
 
 @Pyro4.expose
@@ -12,13 +12,13 @@ serverNum = 1
 class Server():
     def __init__(self):
         print("Starting Server")
-        self.serverNumber = 1
+        self.serverNumber = 0
         with open("server{0}ratings.json".format(self.serverNumber), "r") as f:
             inValue = json.load(f)
         self.serverInfo = queue.Queue()
         self.serverInfo.put({"replicaTS":[0,0,0,0,0], "updateLog":[], "valueTS":[0,0,0,0,0], "value":[], "exOps":[]})
         self.movies = ["spiderman", "bee movie"]
-        self.knownRMs = ["PYRO:Server0@localhost:50002"]
+        self.knownRMs = ["PYRO:Server1@localhost:50003"]
         self.status = "online"
         threading.Thread(target=self.mainLoop).start()
 
@@ -67,7 +67,7 @@ class Server():
                 if add:
                     data["updateLog"].append(x)
         x = 0
-        print(data["exOps"])
+        
         while x < len(data["updateLog"]):
             if (not data["updateLog"][x][4] in data["exOps"]) and self.lessThanTS(data["updateLog"][x][3], data["valueTS"]):
                 data["value"] = self.updateValue(data["updateLog"][x][2], data["value"])
@@ -75,6 +75,7 @@ class Server():
                 data["exOps"].append(data["updateLog"][x][4])
                 x = 0
             x += 1
+            
         newLog = []
             
         self.serverInfo.put(data)
@@ -121,7 +122,7 @@ class Server():
     
 portNum = 50002 + serverNum
 daemon = Pyro4.Daemon(port=portNum)
-uri = daemon.register(Server, "Server1")
+uri = daemon.register(Server, "Server0")
 
 print("Server{0} URI: ".format(serverNum), uri)
 
