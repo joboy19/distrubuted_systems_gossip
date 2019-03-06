@@ -10,7 +10,7 @@ serverNum = 0
 @Pyro4.expose
 @Pyro4.behavior(instance_mode="single")
 class Server():
-    def __init__(self):
+    def __init__(self):                                 #initialize some variables, including starting the threadsafe variables
         print("Starting Server")
         self.serverNumber = 0
         with open("server{0}ratings.json".format(self.serverNumber), "r") as f:
@@ -34,6 +34,17 @@ class Server():
                 return False
         return True
 
+    def sortLog(self, log):
+        n = len(log)
+        out = list(log)
+
+        for x in range(n):
+            for y in range(0, n - x - 1):
+                if self.lessThanTS(out[y+1][1], out[y][0]):
+                    out[y+1], out[y] = out[y], out[y+1]
+        return out
+        
+
     def recieveUpdate(self, uPREV, uID, uOP):
         data = self.serverInfo.get(block = True, timeout = None)
         print("Incoming message: ", uPREV, uID, uOP)
@@ -47,10 +58,7 @@ class Server():
         TS = list(uPREV)
         TS[self.serverNumber] = data["replicaTS"][self.serverNumber]
         data["updateLog"].append( [self.serverNumber, TS, uOP, uPREV, uID] )
-        if (self.lessThanTS(uPREV, data["valueTS"])) and (not uID in data["exOps"]):
-            data["value"] = self.updateValue(uOP, data["value"])
-            data["valueTS"] = self.mergeTS(data["valueTS"], TS)
-            data["exOps"].append(uID)
+        data = self.checkForStable(data)
         self.serverInfo.put(data)
         return TS
     
@@ -66,8 +74,12 @@ class Server():
                         add = False
                 if add:
                     data["updateLog"].append(x)
+        data = self.checkForStable(data)
+        self.serverInfo.put(data)
+
+    def checkForStable(self, data):
+        data["updateLog"] = self.sortLog(data["updateLog"])
         x = 0
-        
         while x < len(data["updateLog"]):
             if (not data["updateLog"][x][4] in data["exOps"]) and self.lessThanTS(data["updateLog"][x][3], data["valueTS"]):
                 data["value"] = self.updateValue(data["updateLog"][x][2], data["value"])
@@ -75,10 +87,9 @@ class Server():
                 data["exOps"].append(data["updateLog"][x][4])
                 x = 0
             x += 1
-            
-        newLog = []
-            
-        self.serverInfo.put(data)
+        return data
+        
+    
                 
             
     def updateValue(self, newUpdate, data):
@@ -88,25 +99,58 @@ class Server():
                 if x["movie"] == newUpdate[1]:
                     x["rating"] = newUpdate[2]
                     return outData
-        outData.append( {"name":newUpdate[0], "movie":newUpdate[1], "rating":newUpdate[2]} )
+        outData.append( {"name":newUpdate[0], "movie":newUpdate[1], "rating":newUpdate[2], "comment":newUpdate[3]} )
         return outData
-        
 
-    def test(self):
+    def getMovies(self):
+        return self.movies
+
+    def checkMovie(self, movie):
+        return (movie in self.movies)
+
+    def viewMovieReviews(self, qOP, qPREV):
         data = self.serverInfo.get(block = True, timeout = None)
+        if not self.lessThanTS(qPREV, data["valueTS"]):
+            self.serverInfo.put(data)
+            return "Timestamp too new"
         self.serverInfo.put(data)
-        print("update log:", data["updateLog"])
-        return "you can do it"
+        reviews = []
+        for x in data["value"]:
+            if x["movie"] == qOP:
+                reviews.append(x)
+        return reviews, data["valueTS"]
 
-    def status(self):
+    def viewUserReviews(self, qOP, qPREV):
+        data = self.serverInfo.get(block = True, timeout = None)
+        if not self.lessThanTS(qPREV, data["valueTS"]):
+            self.serverInfo.put(data)
+            return "Timestamp too new"
+        self.serverInfo.put(data)
+        reviews = []
+        for x in data["value"]:
+            if x["user"] == qOP:
+                reviews.append(x)
+        return reviews, data["valueTS"]
+
+    def viewSingleReview(self, qOP, qPREV):
+        data = self.serverInfo.get(block = True, timeout = None)
+        if not self.lessThanTS(qPREV, data["valueTS"]):
+            self.serverInfo.put(data)
+            return "Timestamp too new"
+        self.serverInfo.put(data)
+        for x in data["value"]:
+            if x["user"] == qOP[0]:
+                if x["movie"] == qOP[1]:
+                    return x, data["valueTS"]
+        return "Review Was No Found", data["valueTS"]
+        
+    def getStatus(self):
         return self.status
 
-
     def mainLoop(self):
-        print("We online")
         while True:
             time.sleep(5)
-            print("server online", time.time())
+            print("Gossip time", time.time())
             data = self.serverInfo.get(block = True, timeout = False)
             print("updatelog:", data["updateLog"])
             print("value table:", data["value"])
@@ -122,12 +166,13 @@ class Server():
     
 portNum = 50002 + serverNum
 daemon = Pyro4.Daemon(port=portNum)
-uri = daemon.register(Server, "Server0")
+uri = daemon.register(Server, "Server" + str(serverNum))
 
-print("Server{0} URI: ".format(serverNum), uri)
+print("Server{0}".format(serverNum))
+print("URI:", uri)
 
 threading.Thread(target=daemon.requestLoop).start()
 
 with Pyro4.Proxy(uri) as rm:
-    print(rm.status())
+    print("Status: {0}".format(rm.getStatus()))
 
