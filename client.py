@@ -2,14 +2,21 @@ import Pyro4
 
 knownFrontEnds = ["pyro:FrontEnd@localhost:50001"]
 
+### TODO ###
+# ask user if they want to use 
+
 def printResponse(response):
-    if isinstance(response, list):
-        for x in response:
-            print("----------------")
-            print("\n".join("{}\t{}".format(k, v) for k, v in x.items()))
+    try:
+        if isinstance(response, list):
+            for x in response:
+                print("----------------")
+                print("\n".join("{}\t{}".format(k, v) for k, v in x.items()))
+            return
+        print(response)
         return
-    print(response)
-    return
+    except:
+        print(reponse)
+        return
 
 def main():
     while True:

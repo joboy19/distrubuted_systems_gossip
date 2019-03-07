@@ -81,25 +81,43 @@ class FrontEnd(object):
 
     def viewUserReviews(self, user):
         print("View Users Reviews Request Recieved")
-        server = Pyro4.Proxy(self.getURI())
-        response = server.viewUserReviews(user, self.frontEndTS)
-        while response == "Timestamp too new":
-            server = Pyro4.Proxy(self.getURI())
-            response = server.viewUserReviews(user, self.frontEndTS)
-        print("Response:", response)
-        self.frontEndTS = self.mergeTS(self.frontEndTS, response[1])
-        return response[0]
+
+        offlineURIs = []
+        while True:
+            URI = self.getURI()
+            while (URI in offlineURIs): 
+                URI = self.getURI()
+            server = Pyro4.Proxy(URI)
+            status = server.getStatus()
+            if status == "offline":
+                print("offline:", URI)
+                offlineURIs.append(URI) 
+            elif status == "online":
+                response = server.viewUserReviews(user, self.frontEndTS)
+                if response != "Timestamp too new":
+                    print("Response:", response)
+                    self.frontEndTS = self.mergeTS(self.frontEndTS, response[1])
+                    return response[0]
 
     def viewSingleReview(self, user, movie):
         print("View Users Reviews Request Recieved")
-        server = Pyro4.Proxy(self.getURI())
-        response = server.viewMovieReviews((user, movie), self.frontEndTS)
-        while response == "Timestamp too new":
-            server = Pyro4.Proxy(self.getURI())
-            response = server.viewMovieReviews((user, movie), self.frontEndTS)
-        print("Response:", response)
-        self.frontEndTS = self.mergeTS(self.frontEndTS, response[1])
-        return response[0]
+
+        offlineURIs = []
+        while True:
+            URI = self.getURI()
+            while (URI in offlineURIs): 
+                URI = self.getURI()
+            server = Pyro4.Proxy(URI)
+            status = server.getStatus()
+            if status == "offline":
+                print("offline:", URI)
+                offlineURIs.append(URI) 
+            elif status == "online":
+                response = server.viewMovieReviews((user, movie), self.frontEndTS)
+                if response != "Timestamp too new":
+                    print("Response:", response)
+                    self.frontEndTS = self.mergeTS(self.frontEndTS, response[1])
+                    return response[0]
         
         
         
