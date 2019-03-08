@@ -5,7 +5,7 @@ import threading
 import time
 import random
 import csv
-serverNum = 1
+serverNum = 3
 
 #["PYRO:Server0@localhost:50002", "PYRO:Server1@localhost:50003", "PYRO:Server2@localhost:50004", "PYRO:Server3@localhost:50005", "PYRO:Server4@localhost:50006"]
 
@@ -14,12 +14,12 @@ serverNum = 1
 class Server(object):
     def __init__(self):                                             #initialize RM variables, including starting the threadsafe variables
         print("Starting Server")
-        self.serverNumber = 1
+        self.serverNumber = 3
         self.serverInfo = queue.Queue()                             #threadsafe values which allow for blocking of other processes whilst processing
         values = self.createReviews()
         self.serverInfo.put({"replicaTS":[0,0,0,0,0], "updateLog":[], "valueTS":[0,0,0,0,0], "value":values, "exOps":[]})
         self.movies = self.createMovies() + ["Test_Movie_Title"]
-        self.knownRMs = ["PYRO:Server0@localhost:50002", "PYRO:Server2@localhost:50004", "PYRO:Server3@localhost:50005", "PYRO:Server4@localhost:50006"]
+        self.knownRMs = ["PYRO:Server1@localhost:50003", "PYRO:Server2@localhost:50004", "PYRO:Server0@localhost:50002", "PYRO:Server4@localhost:50006"]
                                                                     #hardcoded list of other known RMs
         self.status = "online"
         threading.Thread(target=self.mainLoop).start()              #start the gossip loop for this server
